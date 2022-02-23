@@ -1,0 +1,40 @@
+service: nimish-s3-file-upload
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: dev
+  region: us-west-1
+
+custom:
+  fileUploadBucketName: ${self:service}-bucket-${self:provider.stage}
+
+plugins:
+  - serverless-iam-roles-per-function
+
+functions:
+  lambdaFileUploadS3:
+    handler: src/upload.handler
+    name: lambda-file-upload-s3
+    description: A lambda handler that uploads a file to an S3 bucket based on an API Gateway trigger.
+    timeout: 60 # seconds
+    memorySize: 128 # mb
+    events:
+      - http:
+          path: images
+          method: POST
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "s3:Put*"
+        Resource: arn:aws:s3:::${self:custom.fileUploadBucketName}/*
+    environment:
+      FILE_UPLOAD_BUCKET_NAME: ${self:custom.fileUploadBucketName}
+
+resources:
+  Resources:
+    BucketFileUpload:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.fileUploadBucketName}
+        AccessControl: PublicRead
